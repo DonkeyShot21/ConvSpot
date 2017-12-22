@@ -1,0 +1,26 @@
+<annotation>
+	<folder>train</folder>
+	<filename>image_hel_visible_20171115T151443_processed_large.jpg</filename>
+	<path>/Users/esa-cesar/Desktop/tf_sunspot_classifier/train/image_hel_visible_20171115T151443_processed_large.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>852</width>
+		<height>852</height>
+		<depth>1</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>sunspot</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>59</xmin>
+			<ymin>482</ymin>
+			<xmax>94</xmax>
+			<ymax>502</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,26 @@
+<annotation verified="yes">
+	<folder>test</folder>
+	<filename>image_hel_visible_20160714T091630_processed_large.jpg</filename>
+	<path>/Users/esa-cesar/Desktop/tf_sunspot_classifier/test/image_hel_visible_20160714T091630_processed_large.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>852</width>
+		<height>852</height>
+		<depth>1</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>sunspot</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>155</xmin>
+			<ymin>394</ymin>
+			<xmax>189</xmax>
+			<ymax>422</ymax>
+		</bndbox>
+	</object>
+</annotation>
