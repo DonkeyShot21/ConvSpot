@@ -4,8 +4,9 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import pickle as pkl
 
-import img_slicer
+import img_slicer, sys, cv2
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -103,8 +104,7 @@ def cnn_model_fn(features, labels, mode):
   return tf.estimator.EstimatorSpec(
       mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
-
-def main(unused_argv):
+def train_and_eval():
   # Load training and eval data
   train_dict = img_slicer.build_img_set("./train")
   train_data = np.asarray(train_dict["slices"],dtype=np.float16)
@@ -143,6 +143,66 @@ def main(unused_argv):
       shuffle=False)
   eval_results = sunspot_classifier.evaluate(input_fn=eval_input_fn)
   print(eval_results)
+
+def predict():
+    skip_ratio = 1 # get all the slices
+    stride = 10 # lower for more accurany, higher for faster prediction
+
+    # Load training and eval data
+    img = cv2.imread("./test/image_hel_visible_20160502T130939_processed_large.jpg",0)
+    slices,_ = img_slicer.slice_and_label(img,[],
+        skip_ratio=skip_ratio,stride=stride)
+    pred_data = np.asarray(slices,dtype=np.float16)
+
+    # Create the Estimator
+    sunspot_classifier = tf.estimator.Estimator(
+        model_fn=cnn_model_fn, model_dir="./model/ckpt")
+
+    # Set up logging for predictions
+    # Log the values in the "Softmax" tensor with label "probabilities"
+    tensors_to_log = {"probabilities": "softmax_tensor"}
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=50)
+
+    # Evaluate the model and print results
+    pred_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": pred_data},
+        num_epochs=1,
+        batch_size=1000,
+        shuffle=False)
+    pred_results = sunspot_classifier.predict(input_fn=pred_input_fn)
+    pred_classes, pred_probab = [],[]
+    for p in pred_results:
+        pred_classes.append(p["classes"])
+        pred_probab.append(p["probabilities"])
+
+    with open("./model/test_prob.pkl","wb+") as f:
+        pkl.dump({"classes":pred_classes,
+                  "probabilities":pred_probab,
+                  "img_shape":img.shape,
+                  "skip_ratio":skip_ratio,
+                  "stride":stride},
+                  f)
+    '''
+    for i in range(len(pred_classes)):
+        if pred_classes[i] == 1:
+            cv2.imshow("slice",slices[i])
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+    '''
+
+
+def main(unused_argv):
+    if len(sys.argv) < 2:
+        print("Usage: python conv_spot.py [mode]")
+    elif sys.argv[1] == "train":
+        train_and_eval()
+    elif sys.argv[1] == "predict":
+        predict()
+    else:
+        print(sys.argv[1],"is not a recognised mode")
+
+
 
 
 if __name__ == "__main__":

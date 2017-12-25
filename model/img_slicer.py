@@ -50,10 +50,8 @@ def random_rotate(img):
     r = random.randint(0,4)
     return np.rot90(img,r)
 
-def slice_and_label(img,ss_list):
+def slice_and_label(img,ss_list,skip_ratio=1000,stride=10,size=28):
     size = 28
-    stride = 10
-    skip_ratio = 2
     slices, labels = [], []
     for xmin in range(0,len(img[0])-size,stride):
         xmax = xmin + size
@@ -75,7 +73,7 @@ def build_img_set(path):
         img_fn = os.path.join(path,img_fn+".jpg")
         img = cv2.imread(img_fn,0)
         print(img.shape)
-        slices, labels = slice_and_label(img,ss_list)
+        slices, labels = slice_and_label(img,ss_list,1000)
         dataset["slices"].extend(slices)
         dataset["labels"].extend(labels)
     return dataset
