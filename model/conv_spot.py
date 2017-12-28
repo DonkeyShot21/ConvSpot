@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import pickle as pkl
 
-import img_slicer, sys, cv2
+import img_slicer, sys, cv2, find_boxes, os
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -146,50 +146,60 @@ def train_and_eval():
 
 def predict():
     skip_ratio = 1 # get all the slices
-    stride = 10 # lower for more accurany, higher for faster prediction
-
-    # Load training and eval data
-    img = cv2.imread("./test/image_hel_visible_20160502T130939_processed_large.jpg",0)
-    slices,_ = img_slicer.slice_and_label(img,[],
-        skip_ratio=skip_ratio,stride=stride)
-    pred_data = np.asarray(slices,dtype=np.float16)
+    stride = 12 # lower for more accurany, higher for faster prediction
+    filter_size = 28 # always the same for this architecture
+    dir = "./test"
+    ext = ".jpg"
+    filenames = [os.path.join(dir,fn) for fn in os.listdir(dir) if ext in fn]
+    #filenames = ["./test/image_hel_visible_20160502T130939_processed_large.jpg"]
 
     # Create the Estimator
     sunspot_classifier = tf.estimator.Estimator(
         model_fn=cnn_model_fn, model_dir="./model/ckpt")
 
-    # Set up logging for predictions
-    # Log the values in the "Softmax" tensor with label "probabilities"
-    tensors_to_log = {"probabilities": "softmax_tensor"}
-    logging_hook = tf.train.LoggingTensorHook(
-        tensors=tensors_to_log, every_n_iter=50)
+    for fn in filenames:
+        print("finding sunspots in:",fn)
+        # Load training and eval data
+        img = cv2.imread(fn,0)
+        slices,_ = img_slicer.slice_and_label(img,[],
+            skip_ratio=skip_ratio,stride=stride)
+        pred_data = np.asarray(slices,dtype=np.float16)
 
-    # Evaluate the model and print results
-    pred_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": pred_data},
-        num_epochs=1,
-        batch_size=1000,
-        shuffle=False)
-    pred_results = sunspot_classifier.predict(input_fn=pred_input_fn)
-    pred_classes, pred_probab = [],[]
-    for p in pred_results:
-        pred_classes.append(p["classes"])
-        pred_probab.append(p["probabilities"])
 
-    with open("./model/test_prob.pkl","wb+") as f:
-        pkl.dump({"classes":pred_classes,
-                  "probabilities":pred_probab,
-                  "img_shape":img.shape,
-                  "skip_ratio":skip_ratio,
-                  "stride":stride},
-                  f)
-    '''
-    for i in range(len(pred_classes)):
-        if pred_classes[i] == 1:
-            cv2.imshow("slice",slices[i])
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-    '''
+
+        # Set up logging for predictions
+        # Log the values in the "Softmax" tensor with label "probabilities"
+        tensors_to_log = {"probabilities": "softmax_tensor"}
+        logging_hook = tf.train.LoggingTensorHook(
+            tensors=tensors_to_log, every_n_iter=50)
+
+        # Evaluate the model and print results
+        pred_input_fn = tf.estimator.inputs.numpy_input_fn(
+            x={"x": pred_data},
+            num_epochs=1,
+            batch_size=1000,
+            shuffle=False)
+        pred_results = sunspot_classifier.predict(input_fn=pred_input_fn)
+        pred_classes, pred_probab = [],[]
+        for p in pred_results:
+            pred_classes.append(p["classes"])
+            pred_probab.append(p["probabilities"])
+
+        boxes = find_boxes.find(classes=pred_classes,
+                                probabilities=pred_probab,
+                                img_shape=img.shape,
+                                filter_size=filter_size,
+                                stride=stride)
+
+        for box in boxes:
+            cv2.rectangle(img,(box[0],box[2]),(box[1],box[3]),(255,0,0),2)
+
+        cv2.imshow("sunspots",img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+
+
 
 
 def main(unused_argv):
