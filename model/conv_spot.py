@@ -115,7 +115,7 @@ def train_and_eval():
 
   # Create the Estimator
   sunspot_classifier = tf.estimator.Estimator(
-      model_fn=cnn_model_fn, model_dir="./model")
+      model_fn=cnn_model_fn, model_dir="./model/ckpt")
 
   # Set up logging for predictions
   # Log the values in the "Softmax" tensor with label "probabilities"
@@ -151,7 +151,7 @@ def predict():
     dir = "./test"
     ext = ".jpg"
     filenames = [os.path.join(dir,fn) for fn in os.listdir(dir) if ext in fn]
-    #filenames = ["./test/image_hel_visible_20160502T130939_processed_large.jpg"]
+    #filenames = ["./test/venustransit_image_can_visible_thumb_latest.jpg"]
 
     # Create the Estimator
     sunspot_classifier = tf.estimator.Estimator(
@@ -194,13 +194,11 @@ def predict():
         for box in boxes:
             cv2.rectangle(img,(box[0],box[2]),(box[1],box[3]),(255,0,0),2)
 
-        cv2.imshow("sunspots",img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        cv2.imwrite(fn.rsplit("/")[-1],img)
 
-
-
-
+        #cv2.imshow("sunspots",img)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
 
 def main(unused_argv):
     if len(sys.argv) < 2:
