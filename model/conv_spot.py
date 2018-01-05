@@ -211,7 +211,5 @@ def main(unused_argv):
         print(sys.argv[1],"is not a recognised mode")
 
 
-
-
 if __name__ == "__main__":
   tf.app.run()
