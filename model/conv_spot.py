@@ -65,6 +65,7 @@ def cnn_model_fn(features, labels, mode):
   # Output Tensor Shape: [batch_size, 1024]
   dense = tf.layers.dense(inputs=pool2_flat, units=1024, activation=tf.nn.relu)
 
+
   # Add dropout operation; 0.6 probability that element will be kept
   dropout = tf.layers.dropout(
       inputs=dense, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
@@ -146,32 +147,33 @@ def train_and_eval():
 
 def predict():
     skip_ratio = 1 # get all the slices
-    stride = 12 # lower for more accurany, higher for faster prediction
+    stride = 7 # lower for more accuracy, higher for faster prediction
     filter_size = 28 # always the same for this architecture
     dir = "./test"
-    ext = ".jpg"
-    filenames = [os.path.join(dir,fn) for fn in os.listdir(dir) if ext in fn]
+    ext = "hmiigr_1024.jpg"
+    filenames = [os.path.join(dir,fn) for fn in os.listdir(dir) if ext in fn][:1]
     #filenames = ["./test/venustransit_image_can_visible_thumb_latest.jpg"]
 
     # Create the Estimator
     sunspot_classifier = tf.estimator.Estimator(
         model_fn=cnn_model_fn, model_dir="./model/ckpt")
 
+    # Set up logging for predictions
+    # Log the values in the "Softmax" tensor with label "probabilities"
+    tensors_to_log = {"probabilities": "softmax_tensor"}
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=50)
+
+
     for fn in filenames:
         print("finding sunspots in:",fn)
         # Load training and eval data
         img = cv2.imread(fn,0)
+        cv2.resize(img, (852,852), interpolation = cv2.INTER_AREA)
         slices,_ = img_slicer.slice_and_label(img,[],
             skip_ratio=skip_ratio,stride=stride)
         pred_data = np.asarray(slices,dtype=np.float16)
 
-
-
-        # Set up logging for predictions
-        # Log the values in the "Softmax" tensor with label "probabilities"
-        tensors_to_log = {"probabilities": "softmax_tensor"}
-        logging_hook = tf.train.LoggingTensorHook(
-            tensors=tensors_to_log, every_n_iter=50)
 
         # Evaluate the model and print results
         pred_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -185,20 +187,20 @@ def predict():
             pred_classes.append(p["classes"])
             pred_probab.append(p["probabilities"])
 
-        boxes = find_boxes.find(classes=pred_classes,
-                                probabilities=pred_probab,
-                                img_shape=img.shape,
-                                filter_size=filter_size,
-                                stride=stride)
+        boxes = find_boxes.boxes(classes=pred_classes,
+                                 probabilities=pred_probab,
+                                 img_shape=img.shape,
+                                 filter_size=filter_size,
+                                 stride=stride)
+
+        print("Found",len(boxes),"boxes")
+        sunspots = find_boxes.boxes_to_sunspots(img=img,
+                                                boxes=boxes)
 
         for box in boxes:
             cv2.rectangle(img,(box[0],box[2]),(box[1],box[3]),(255,0,0),2)
 
-        cv2.imwrite(fn.rsplit("/")[-1],img)
-
-        #cv2.imshow("sunspots",img)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
+        cv2.imwrite("./results" + fn.rsplit("/")[-1],img)
 
 def main(unused_argv):
     if len(sys.argv) < 2:
