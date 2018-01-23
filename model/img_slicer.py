@@ -51,7 +51,6 @@ def random_rotate(img):
     return np.rot90(img,r)
 
 def slice_and_label(img,ss_list,skip_ratio=1000,stride=10,size=28):
-    size = 28
     slices, labels = [], []
     for xmin in range(0,len(img[0])-size,stride):
         xmax = xmin + size
@@ -64,6 +63,19 @@ def slice_and_label(img,ss_list,skip_ratio=1000,stride=10,size=28):
                 sl = random_rotate(sl)
                 slices.append(sl)
     return slices, labels
+
+def slice_for_prediction(img, stride=7, size=28):
+    disk_coord = {tuple(coords) for coords in np.argwhere(img > 50)}
+
+    slices = []
+    for xmin in range(0,len(img[0])-size,stride):
+        xmax = xmin + size
+        for ymin in range(0,len(img)-size,stride):
+            ymax = ymin + size
+            if disk_coord >= {(xmin,ymin),(xmin,ymax),(xmax,ymin),(xmax,ymax)}:
+                slices.append([[ymin,ymax,xmin,xmax],img[ymin:ymax,xmin:xmax]])
+    return slices
+
 
 def build_img_set(path):
     dataset = {"slices" : [], "labels" : []}

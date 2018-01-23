@@ -164,16 +164,13 @@ def predict():
     logging_hook = tf.train.LoggingTensorHook(
         tensors=tensors_to_log, every_n_iter=50)
 
-
     for fn in filenames:
         print("finding sunspots in:",fn)
         # Load training and eval data
         img = cv2.imread(fn,0)
-        cv2.resize(img, (852,852), interpolation = cv2.INTER_AREA)
-        slices,_ = img_slicer.slice_and_label(img,[],
-            skip_ratio=skip_ratio,stride=stride)
-        pred_data = np.asarray(slices,dtype=np.float16)
-
+        #cv2.resize(img, (852,852), interpolation = cv2.INTER_AREA)
+        slices = img_slicer.slice_for_prediction(img,stride=stride)
+        pred_data = np.array([s[1] for s in slices],dtype=np.float16)
 
         # Evaluate the model and print results
         pred_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -187,8 +184,11 @@ def predict():
             pred_classes.append(p["classes"])
             pred_probab.append(p["probabilities"])
 
+        print(pred_probab)
+
         boxes = find_boxes.boxes(classes=pred_classes,
                                  probabilities=pred_probab,
+                                 coord = [s[0] for s in slices],
                                  img_shape=img.shape,
                                  filter_size=filter_size,
                                  stride=stride)

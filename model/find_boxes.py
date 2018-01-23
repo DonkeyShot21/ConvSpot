@@ -30,28 +30,48 @@ def find_components(pixels):
     neigh = find_neighbours(set([target]),pixels)
     return [list(neigh)] + find_components(pixels - neigh)
 
-def boxes(classes,probabilities,img_shape,filter_size,stride):
+def boxes(classes,probabilities,coord,img_shape,filter_size,stride):
     print("Finding Boxes...")
 
-    i = 0
     k = 0.75
-    #min_consensus = 0.3 # SOHO
-    min_consensus = 0.4 # HELIOS
-    #probab_threshold = 0.75 # SOHO
-    probab_threshold = 0.95 # HELIOS
+    min_consensus = 0.3 # SOHO
+    #min_consensus = 0.4 # HELIOS
+    probab_threshold = 0.5 # SOHO
+    #probab_threshold = 0.95 # HELIOS
 
-    hit_map = np.ones(img_shape)
+    hit_map = np.zeros(img_shape)
     probab_map = np.zeros(img_shape)
+
+    print(coord)
+
+    for i in range(len(coord)):
+        xmax, xmin, ymax, ymin = coord[i]
+        hit_map[xmin:xmax,ymin:ymax] += 1
+        if probabilities[i][1] >= probab_threshold:
+
+            print(probabilities[i][1])
+            probab_map[xmin:xmax,ymin:ymax] += probabilities[i][1]
+
+    '''
+    i = 0
     for y in range(filter_size//2,img_shape[1]-filter_size//2, stride):
-        ymin, ymax = y - int(k*stride), y + int(k*stride)
+        ymin, ymax = y - filter_size//2, y + filter_size//2
         for x in range(filter_size//2,img_shape[0]-filter_size//2, stride):
-            xmin, xmax = x - int(k*stride), x + int(k*stride)
+            xmin, xmax = x - filter_size//2, x + filter_size//2
             hit_map[xmin:xmax,ymin:ymax] += 1
             if probabilities[i][1] >= probab_threshold:
                 probab_map[xmin:xmax,ymin:ymax] += probabilities[i][1]
             i += 1
+    '''
 
-    probab_map[probab_map < min_consensus * np.amax(hit_map)] = 0
+    hit_map[hit_map == 0] = 1.0
+    smooth = probab_map // hit_map
+    cv2.imshow("smooth",smooth)
+    cv2.imshow("probab",probab_map)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    probab_map[probab_map < 0.1] = 0
     indices = np.where(probab_map > 0)
     pixels = [(indices[0][i],indices[1][i]) for i in range(len(indices[0]))]
 
